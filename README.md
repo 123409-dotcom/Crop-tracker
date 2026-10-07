@@ -2,7 +2,7 @@
 ## CONTRIBUTORS
 1. JOSEPH JUMA
 2. SHADRACK MULWA
-3. DISMAS WATEBA
+3. DISMAS WETABA
 4. ALEX MAINA
 
 ## ABOUT THE PROJECT.
@@ -11,7 +11,7 @@ Where by the farmers can know the well being of their plants with the use of the
 The app can also be used to predict the kind of the plants disease that their crops maybe suffering from.
 Helps the famers to predict the best soil for a certain crops.
 
-## THE PUPOSE OF THE PROJECT.
+## THE PURPOSE OF THE PROJECT.
 The project is purposed to help the farmers to predict the well being of their crops.
 The diseases their plants maybe suffering from so that they act on the immediate effects.
 Helps the famers to predict the best soil for a certain crops.
