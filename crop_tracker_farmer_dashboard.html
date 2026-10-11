@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriPulse - Crop Tracker Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        agri: {
+                            50: '#f2f8f4',
+                            100: '#e1f0e5',
+                            500: '#2e7d32',
+                            600: '#1b5e20',
+                            700: '#144517',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-slate-50 font-sans text-slate-800 antialiased flex flex-col">
+
+    <header class="bg-agri-700 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Logo and Brand -->
+            <div class="flex items-center space-x-3">
+                <div class="bg-agri-500 p-2 rounded-xl text-white shadow-inner flex items-center justify-center">
+                    <i class="fa-solid fa-seedling text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">AgriPulse</h1>
+                    <p class="text-xs text-agri-100 opacity-90">Smart Crop Monitoring</p>
+                </div>
+            </div>
+
+            <!-- Field Selector & Sync Status -->
+            <div class="flex items-center space-x-3 sm:space-x-4">
+                <!-- Field Selector Dropdown -->
+                <div class="relative">
+                    <select id="fieldSelector" class="bg-agri-600 text-white text-xs sm:text-sm rounded-lg px-3 py-2 pr-8 border border-agri-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 cursor-pointer shadow-sm">
+                        <option value="all">🌾 All Fields (Farm Overview)</option>
+                        <option value="North Plot">🌱 North Plot (Maize)</option>
+                        <option value="East Plot">🍅 East Plot (Tomatoes)</option>
+                        <option value="South Valley">🥔 South Valley (Potatoes)</option>
+                        <option value="West Acre">🌾 West Acre (Wheat)</option>
+                    </select>
+                </div>
+
+                <!-- Sync Status Badge -->
+                <div id="syncBadge" class="hidden sm:flex items-center space-x-1.5 bg-emerald-800/60 border border-emerald-500/40 text-emerald-100 text-xs px-2.5 py-1.5 rounded-full shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="syncText">Synced 2m ago</span>
+                </div>
+
+                <!-- Manual Sync Button -->
+                <button onclick="triggerSync()" id="syncBtn" class="bg-agri-600 hover:bg-agri-500 text-white text-xs px-3 py-2 rounded-lg transition border border-agri-500 flex items-center space-x-1 shadow-sm active:scale-95">
+                    <i id="syncIcon" class="fa-solid fa-rotate"></i>
+                    <span class="hidden md:inline">Sync</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
+
+        <!-- Notification Banner -->
+        <div id="alertBanner" class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex items-start justify-between">
+            <div class="flex items-start space-x-3">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg mt-0.5"></i>
+                <div>
+                    <h3 class="text-sm font-semibold text-amber-800">Action Recommended: Early Blight Risk Detected</h3>
+                    <p class="text-xs text-amber-700 mt-0.5">East Plot (Tomatoes) shows humidity conditions favorable for fungal growth. Consider preventive spraying.</p>
+                </div>
+            </div>
+            <button onclick="dismissBanner()" class="text-amber-500 hover:text-amber-700 text-sm p-1"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- KPI 1: Overall Health Index -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between transition hover:shadow-md">
+                <div class="flex items-center justify-between text-slate-500">
+                    <span class="text-xs sm:text-sm font-medium uppercase tracking-wider">Overall Health</span>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-heart-pulse text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <div>
+                        <span id="kpiHealthScore" class="text-2xl sm:text-3xl font-bold text-slate-900">88%</span>
+                        <span class="text-xs font-semibold text-emerald-600 ml-1.5"><i class="fa-solid fa-arrow-up"></i> +2.4%</span>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-medium">Good Condition</span>
+                </div>
+            </div>
+
+            <!-- KPI 2: Scanned Crops Today -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between transition hover:shadow-md">
+                <div class="flex items-center justify-between text-slate-500">
+                    <span class="text-xs sm:text-sm font-medium uppercase tracking-wider">Scans Today</span>
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i class="fa-solid fa-camera-retro text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <div>
+                        <span id="kpiScansCount" class="text-2xl sm:text-3xl font-bold text-slate-900">12</span>
+                        <span class="text-xs text-slate-400 ml-1">/ 15 plots</span>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-medium">In Progress</span>
+                </div>
+            </div>
+
+            <!-- KPI 3: Active Threats & Issues -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between transition hover:shadow-md">
+                <div class="flex items-center justify-between text-slate-500">
+                    <span class="text-xs sm:text-sm font-medium uppercase tracking-wider">Active Issues</span>
+                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <i class="fa-solid fa-bug text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <div>
+                        <span id="kpiIssuesCount" class="text-2xl sm:text-3xl font-bold text-rose-600">1</span>
+                        <span class="text-xs text-rose-500 ml-1">Flagged</span>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 bg-rose-100 text-rose-800 rounded-full font-medium">Requires Action</span>
+                </div>
+            </div>
+
+            <!-- KPI 4: Local Weather Widget -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between transition hover:shadow-md">
+                <div class="flex items-center justify-between text-slate-500">
+                    <span class="text-xs sm:text-sm font-medium uppercase tracking-wider">Weather & Rain</span>
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <i class="fa-solid fa-cloud-sun-rain text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline justify-between">
+                    <div>
+                        <span class="text-2xl sm:text-3xl font-bold text-slate-900">26°C</span>
+                        <span class="text-xs text-slate-500 ml-1">65% Rain</span>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium">Humid</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex flex-wrap items-center gap-3">
+            <button onclick="openScanModal()" class="flex-1 sm:flex-none bg-agri-600 hover:bg-agri-700 text-white font-medium px-5 py-3 rounded-xl shadow-sm transition flex items-center justify-center space-x-2 active:scale-95">
+                <i class="fa-solid fa-wand-magic-sparkles text-emerald-300"></i>
+                <span>Analyze Crop Photo</span>
+            </button>
+            <button onclick="openLogModal()" class="flex-1 sm:flex-none bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium px-5 py-3 rounded-xl shadow-sm transition flex items-center justify-center space-x-2 active:scale-95">
+                <i class="fa-solid fa-clipboard-list text-agri-500"></i>
+                <span>Log Farm Activity</span>
+            </button>
+            <div class="ml-auto hidden md:block text-xs text-slate-400">
+                <i class="fa-regular fa-clock mr-1"></i> Last updated: Just now
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-bold text-lg text-slate-900">Field & Crop Health Breakdown</h2>
+                    <p class="text-xs text-slate-500">Real-time status tracking across registered farm plots</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="relative">
+                        <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Search plots..." class="bg-slate-50 text-xs text-slate-700 px-3 py-2 pl-8 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-48">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto">
+                <table id="cropTable" class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/70 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
+                            <th class="py-3 px-5">Field & Plot Name</th>
+                            <th class="py-3 px-5">Crop & Variety</th>
+                            <th class="py-3 px-5">Growth Stage</th>
+                            <th class="py-3 px-5">Health Status</th>
+                            <th class="py-3 px-5">Last Inspection</th>
+                            <th class="py-3 px-5 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cropTableBody" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- Populated dynamically via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-bold text-base text-slate-900">Recent Farm Logs & Activities</h3>
+                    <p class="text-xs text-slate-500">History of watering, fertilizing, and treatments</p>
+                </div>
+                <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full"><span id="logCount">0</span> Recorded</span>
+            </div>
+            <div id="activityLogList" class="space-y-3">
+                <!-- Populated dynamically -->
+                <div class="text-center py-6 text-slate-400 text-xs">No activity logs recorded yet today. Click "Log Farm Activity" to begin.</div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="scanModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="scanModalContent">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-emerald-100 text-emerald-700 p-2 rounded-xl">
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900">Analyze Crop Photo</h3>
+                </div>
+                <button onclick="closeScanModal()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="py-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Select Plot to Inspect</label>
+                    <select id="scanPlotName" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="North Plot">🌱 North Plot (Maize)</option>
+                        <option value="East Plot">🍅 East Plot (Tomatoes)</option>
+                        <option value="South Valley">🥔 South Valley (Potatoes)</option>
+                        <option value="West Acre">🌾 West Acre (Wheat)</option>
+                    </select>
+                </div>
+
+                <!-- Simulated Upload Dropzone -->
+                <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 flex flex-col items-center justify-center">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-2 shadow-sm">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-700">Click to upload or capture crop leaf photo</p>
+                    <p class="text-xs text-slate-400 mt-1">Supports JPG, PNG (Simulated AI Health Classifier)</p>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
+
+                <!-- Simulation Result Box -->
+                <div id="scanResultBox" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center space-x-2 text-emerald-800 font-semibold text-sm">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                        <span>AI Classification Complete</span>
+                    </div>
+                    <div class="text-xs text-emerald-900 space-y-1 bg-white/60 p-3 rounded-xl border border-emerald-100">
+                        <div class="flex justify-between"><span>Detected Condition:</span> <strong id="resCondition" class="text-emerald-700">Healthy Leaf Structure</strong></div>
+                        <div class="flex justify-between"><span>Confidence Score:</span> <strong class="text-slate-800">96.4%</strong></div>
+                        <div class="flex justify-between"><span>Recommended Action:</span> <strong class="text-slate-800">Normal irrigation schedule</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                <button onclick="closeScanModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+                <button onclick="runAiScan()" id="scanActionBtn" class="bg-agri-600 hover:bg-agri-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shadow-sm">Run AI Diagnosis</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="logModalContent">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-2">
+                    <div class="bg-emerald-100 text-emerald-700 p-2 rounded-xl">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-900">Log Farm Activity</h3>
+                </div>
+                <button onclick="closeLogModal()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Modal Body Form -->
+            <form id="activityForm" onsubmit="submitActivityLog(event)" class="py-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Select Plot</label>
+                    <select id="logPlot" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="North Plot">🌱 North Plot (Maize)</option>
+                        <option value="East Plot">🍅 East Plot (Tomatoes)</option>
+                        <option value="South Valley">🥔 South Valley (Potatoes)</option>
+                        <option value="West Acre">🌾 West Acre (Wheat)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Activity Type</label>
+                    <select id="logType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="Watering / Irrigation">💧 Watering / Irrigation</option>
+                        <option value="Fertilizer Application">🧪 Fertilizer Application</option>
+                        <option value="Pest / Disease Treatment">🛡️ Pest / Disease Treatment</option>
+                        <option value="Weeding">🌿 Weeding</option>
+                        <option value="Soil Tilling">🚜 Soil Tilling</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Notes / Details</label>
+                    <textarea id="logNotes" rows="3" placeholder="e.g. Applied 20L NPK fertilizer along crop rows..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeLogModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+                    <button type="submit" class="bg-agri-600 hover:bg-agri-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shadow-sm">Save Activity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded-2xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">Action completed successfully</span>
+    </div>
+
+    <footer class="bg-white border-t border-slate-100 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
+            AgriPulse Smart Crop Tracker &copy; 2026 • Optimized for Field Operations
+        </div>
+    </footer>
+
+    <script>
+        // Initial Mock Database for Fields
+        const defaultFields = [
+            { id: 1, name: "North Plot", crop: "Maize (Hybrid 614)", stage: "Vegetative", status: "Healthy", statusBadge: "bg-emerald-100 text-emerald-800", date: "Today, 08:30 AM" },
+            { id: 2, name: "East Plot", crop: "Tomatoes (Roma)", stage: "Fruiting", status: "Early Blight Risk", statusBadge: "bg-amber-100 text-amber-800", date: "Yesterday, 04:15 PM" },
+            { id: 3, name: "South Valley", crop: "Potatoes (Shangi)", stage: "Tuber Bulking", status: "Healthy", statusBadge: "bg-emerald-100 text-emerald-800", date: "2 days ago" },
+            { id: 4, name: "West Acre", crop: "Wheat (Kezi)", stage: "Tillering", status: "Healthy", statusBadge: "bg-emerald-100 text-emerald-800", date: "3 days ago" }
+        ];
+
+        let fieldsData = JSON.parse(localStorage.getItem('agri_fields')) || defaultFields;
+        let activityLogs = JSON.parse(localStorage.getItem('agri_logs')) || [];
+
+        // On Window Load
+        window.onload = function() {
+            renderTable(fieldsData);
+            renderLogs();
+            updateStats();
+
+            // Setup Field Selector event listener
+            document.getElementById('fieldSelector').addEventListener('change', function(e) {
+                const val = e.target.value;
+                if(val === 'all') {
+                    renderTable(fieldsData);
+                } else {
+                    const filtered = fieldsData.filter(f => f.name === val);
+                    renderTable(filtered);
+                }
+            });
+        };
+
+        // Render Table Function
+        function renderTable(data) {
+            const tbody = document.getElementById('cropTableBody');
+            tbody.innerHTML = '';
+
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 text-xs">No matching plots found.</td></tr>`;
+                return;
+            }
+
+            data.forEach(field => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="py-3.5 px-5 font-semibold text-slate-900 flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>${field.name}</span>
+                    </td>
+                    <td class="py-3.5 px-5 text-slate-600">${field.crop}</td>
+                    <td class="py-3.5 px-5"><span class="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg">${field.stage}</span></td>
+                    <td class="py-3.5 px-5"><span class="text-xs px-2.5 py-1 rounded-full font-medium ${field.statusBadge}">${field.status}</span></td>
+                    <td class="py-3.5 px-5 text-slate-500 text-xs">${field.date}</td>
+                    <td class="py-3.5 px-5 text-right">
+                        <button onclick="inspectField('${field.name}')" class="text-emerald-700 hover:text-emerald-800 font-medium text-xs bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition">Inspect</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Search Filter
+        function filterTable() {
+            const query = document.getElementById('tableSearch').value.toLowerCase();
+            const filtered = fieldsData.filter(f => f.name.toLowerCase().includes(query) || f.crop.toLowerCase().includes(query));
+            renderTable(filtered);
+        }
+
+        // Modal Controls for Scan
+        function openScanModal() {
+            const modal = document.getElementById('scanModal');
+            const content = document.getElementById('scanModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+            document.getElementById('scanResultBox').classList.add('hidden');
+        }
+
+        function closeScanModal() {
+            const modal = document.getElementById('scanModal');
+            const content = document.getElementById('scanModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Modal Controls for Activity Log
+        function openLogModal() {
+            const modal = document.getElementById('logModal');
+            const content = document.getElementById('logModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeLogModal() {
+            const modal = document.getElementById('logModal');
+            const content = document.getElementById('logModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Simulate AI Scan
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if(file) {
+                document.getElementById('dropzone').innerHTML = `
+                    <div class="text-emerald-600 font-medium text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-image text-lg"></i>
+                        <span>${file.name} attached successfully</span>
+                    </div>
+                `;
+            }
+        }
+
+        function runAiScan() {
+            const btn = document.getElementById('scanActionBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-1.5"></i> Analyzing Leaf...`;
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = `Run AI Diagnosis`;
+                document.getElementById('scanResultBox').classList.remove('hidden');
+                
+                // Update stats
+                showToast("AI Scan completed successfully!");
+            }, 1200);
+        }
+
+        // Submit Activity Log
+        function submitActivityLog(e) {
+            e.preventDefault();
+            const plot = document.getElementById('logPlot').value;
+            const type = document.getElementById('logType').value;
+            const notes = document.getElementById('logNotes').value || "No additional notes.";
+
+            const newLog = {
+                plot: plot,
+                type: type,
+                notes: notes,
+                time: "Today, " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            activityLogs.unshift(newLog);
+            localStorage.setItem('agri_logs', JSON.stringify(activityLogs));
+
+            renderLogs();
+            closeLogModal();
+            document.getElementById('activityForm').reset();
+            showToast("Farm activity logged successfully!");
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('activityLogList');
+            document.getElementById('logCount').innerText = activityLogs.length;
+
+            if(activityLogs.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">No activity logs recorded yet today. Click "Log Farm Activity" to begin.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            activityLogs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+                div.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-emerald-100 text-emerald-700 p-2 rounded-lg mt-0.5">
+                            <i class="fa-solid fa-seedling text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-semibold text-slate-900 text-sm">${log.plot}</span>
+                                <span class="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-md font-medium">${log.type}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-1">${log.notes}</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-slate-400 self-end sm:self-center"><i class="fa-regular fa-clock mr-1"></i>${log.time}</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Sync Trigger
+        function triggerSync() {
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+            icon.classList.add('fa-spin');
+            text.innerText = "Syncing with cloud...";
+
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                text.innerText = "Synced just now";
+                showToast("All field logs synchronized successfully.");
+            }, 1000);
+        }
+
+        // Dismiss Banner
+        function dismissBanner() {
+            document.getElementById('alertBanner').remove();
+        }
+
+        // Toast Notification Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function inspectField(plotName) {
+            showToast("Opening inspection records for " + plotName);
+        }
+
+        function updateStats() {
+            // Keep stats updated
+        }
+    </script>
+</body>
+</html>
